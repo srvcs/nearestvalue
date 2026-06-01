@@ -1,49 +1,48 @@
 # srvcs-nearestvalue
 
-The nearest-value range service of the srvcs.cloud distributed standard library.
+## Name
 
-Its single concern: **which element of a list of integers is nearest to a
-reference value?** It returns the element minimizing the absolute difference to
-`value`; on a tie, the element that appears first wins.
+| Field | Value |
+| --- | --- |
+| Service | `srvcs-nearestvalue` |
+| Slug | `nearestvalue` |
+| Repository | `srvcs/nearestvalue` |
+| Package | `srvcs-nearestvalue` |
+| Kind | `leaf` |
 
-`srvcs-nearestvalue` is a **leaf**: it depends on no other service and makes no
-network calls. All work is local.
+## Function
 
-```text
-result = element of values minimizing (element - value).abs()   (first on ties)
-```
+range: the element of a list nearest to value
+
+## Dependencies
+
+None.
 
 ## API
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `GET` | `/` | Service identity, concern, and dependency list |
-| `POST` | `/` | Return the element of `values` nearest to `value` |
-| `GET` | `/healthz` `/readyz` `/metrics` `/openapi.json` | srvcs service standard surface |
+| `GET` | `/` | Service identity |
+| `POST` | `/` | Evaluate the service function |
+| `GET` | `/healthz` | Liveness probe |
+| `GET` | `/readyz` | Readiness probe |
+| `GET` | `/metrics` | Prometheus metrics |
+| `GET` | `/openapi.json` | OpenAPI document |
 
-```sh
-curl -s -X POST localhost:8080/ -H 'content-type: application/json' -d '{"value": 5, "values": [1, 4, 9]}'
-# {"value":5,"values":[1,4,9],"result":4}
+## Inputs
 
-curl -s -X POST localhost:8080/ -H 'content-type: application/json' -d '{"value": 7, "values": [1, 4, 9]}'
-# {"value":7,"values":[1,4,9],"result":9}
-```
+| Name | Type | Required |
+| --- | --- | --- |
+| `value` | `json` | yes |
+| `values` | `json[]` | yes |
 
-Responses:
+## Outputs
 
-- `200 {"value": int, "values": [int, ...], "result": int}` — evaluated.
-  `result` is the element of `values` nearest to `value`.
-- `422 {"error": ...}` — `value` or some element of `values` is not a JSON
-  integer, or `values` is empty.
-
-Distances are computed as `(element - value).abs()`. When two elements are
-equally near, the one that appears earliest in `values` is returned.
-
-## Dependencies
-
-None. `srvcs-nearestvalue` is a leaf range service. Because it owns its own
-validation, it rejects any non-integer input or empty list directly with `422`
-rather than forwarding to a dependency.
+| Name | Type |
+| --- | --- |
+| `value` | `integer` |
+| `values` | `integer[]` |
+| `result` | `integer` |
 
 ## Configuration
 
@@ -53,7 +52,13 @@ rather than forwarding to a dependency.
 | `SRVCS_ENV` | `development` | Environment label for logs |
 | `RUST_LOG` | `info,tower_http=info` | Tracing filter |
 
-## Local checks
+## Error Behavior
+
+- `422` means the request could not be evaluated for the documented input shape.
+- `503` means a required dependency was unavailable or returned an unexpected response.
+- Dependency validation errors are forwarded when this service delegates validation.
+
+## Local Checks
 
 ```sh
 cargo fmt --check
@@ -61,8 +66,8 @@ cargo clippy --all-targets -- -D warnings
 cargo test
 ```
 
-See [`srvcs/platform`](https://github.com/srvcs/platform) for the shared
-standard.
+See the [srvcs service standard](https://github.com/srvcs/platform/blob/main/STANDARD.md) for the full operational contract.
 
-> Note: the `cargoHash` in `flake.nix` is inherited from the template and must be
-> refreshed with a `nix build` before the Nix gates pass.
+## Metadata
+
+Machine-readable service metadata lives in `srvcs.yaml`. Keep it aligned with this README when the service contract changes.
